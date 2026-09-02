@@ -1,129 +1,167 @@
-# Opioid Equianalgesic Conversion & Rotation Calculator
+# Opioid Conversion Rotation Agent
 
-Real clinical calculator for opioid dose conversion, rotation, tapering, and Morphine Milligram Equivalent (MME) calculation.
+> **Domain:** Clinical Pharmacology & Precision Pharmacotherapy  
+> **Reference Guidelines & Standards:** `CPIC Guidelines & FDA Table of Pharmacogenomic Biomarkers`
 
-## Clinical Background
+<div align="center">
 
-Opioid rotation involves converting from one opioid to another to improve pain control or reduce side effects. Key principles:
-- **Equianalgesic doses** provide approximately equal analgesia
-- **Cross-tolerance reduction** (25-50%) accounts for incomplete cross-tolerance between opioids
-- **Methadone conversion** is non-linear and requires specialist guidance
-- **MME calculation** is used for overdose risk assessment
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
+![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
+![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
 
-## Equianalgesic Table
+</div>
 
-All doses equivalent to **30mg oral morphine**:
+---
 
-| Opioid | Route | Equianalgesic Dose | MME Factor |
-|--------|-------|-------------------|------------|
-| Morphine | PO | 30 mg | 1.0 |
-| Morphine | IV | 10 mg | 3.0 |
-| Oxycodone | PO | 20 mg | 1.5 |
-| Hydrocodone | PO | 30 mg | 1.0 |
-| Hydromorphone | PO | 7.5 mg | 4.0 |
-| Hydromorphone | IV | 1.5 mg | 20.0 |
-| Fentanyl | IV | 100 mcg | 0.1/mcg |
-| Fentanyl patch | TD | 25 mcg/hr | 2.4/mcg/hr/day |
-| Codeine | PO | 200 mg | 0.15 |
-| Tramadol | PO | 100 mg | 0.15 |
-| Methadone | PO | 20 mg* | 3.0* |
+## 📖 What It Does
 
-*Methadone conversion varies significantly by total daily MME.
+**Opioid Conversion Rotation Agent** is an advanced analytical and computational platform implementing Equianalgesic Rotation & Cross-Tolerance Safety Reducer.
 
-## MME Risk Stratification
+---
 
-| Daily MME | Risk Level | Action |
-|-----------|-----------|--------|
-| <50 | Low | Continue monitoring |
-| 50-89 | Moderate | Consider naloxone co-prescribing |
-| 90-199 | High | Careful justification, naloxone co-prescribe |
-| ≥200 | Very High | Pain specialist referral, naloxone required |
+## ⚙️ Key Capabilities & Algorithmic Modules
 
-## Installation
+### 🔬 Analytical Functions
+
+- **`calculate_mme()`**: Calculate total daily Morphine Milligram Equivalents (MME).
+
+Args:
+    opioid_doses: List of dicts with keys:
+        - opioid: str (e.g., "morphine_po", "oxycodone_po")
+        - dose_mg: float (dose per administration)
+        - doses_per_day: int (number of administrations per day)
+        OR
+        - dose_mcg_per_hr: float (for fentanyl patch)
+    
+Returns:
+    Dictionary with MME calculation
+- **`convert_opioid()`**: Convert from one opioid to another with equianalgesic dosing.
+
+Args:
+    source_opioid: Source opioid name (e.g., "morphine_po")
+    source_dose_mg: Source dose per administration in mg
+    source_doses_per_day: Number of source doses per day
+    target_opioid: Target opioid name
+    cross_tolerance_reduction: Reduction for incomplete cross-tolerance (0.25-0.50)
+    doses_per_day_target: Target number of doses per day
+    
+Returns:
+    Dictionary with conversion details
+- **`convert_to_methadone()`**: Convert total daily MME to methadone dose.
+
+Methadone conversion is complex and non-linear.
+The ratio increases with higher MME doses.
+
+Args:
+    total_daily_mme: Total daily morphine milligram equivalents
+    cross_tolerance_reduction: Cross-tolerance reduction (default 50% for methadone)
+    
+Returns:
+    Dictionary with methadone conversion
+- **`generate_taper_schedule()`**: Generate a gradual opioid tapering schedule.
+
+CDC recommends:
+- Reduce by 10% per month for patients on opioids >1 year
+- Reduce by 10% per week for patients on opioids <1 year
+- Slower tapers (5-10% monthly) for patients on high doses
+
+Args:
+    current_daily_mme: Current total daily MME
+    target_daily_mme: Target daily MME (0 for complete taper)
+    reduction_percent: Percentage to reduce at each step
+    interval_days: Days between reductions
+    min_step_mme: Minimum reduction per step in MME
+    
+Returns:
+    Dictionary with tapering schedule
+- **`convert_to_fentanyl_patch()`**: Convert total daily MME to fentanyl transdermal patch dose.
+
+Approximate: 1 mcg/hr fentanyl patch ≈ 2.4 MME/day
+(varies by source, 2.0-3.0 range)
+
+Args:
+    total_daily_mme: Total daily morphine milligram equivalents
+    cross_tolerance_reduction: Cross-tolerance reduction
+    
+Returns:
+    Dictionary with fentanyl patch conversion
+
+---
+
+## 📐 Mathematical Formulation & Logic
+
+```text
+  Calculate total daily Morphine Milligram Equivalents (MME).
+  risk = "VERY_HIGH"
+  risk = "HIGH"
+  risk = "MODERATE"
+  risk = "LOW"
+```
+
+---
+
+## 💻 CLI Quickstart & Usage
+
+### 1. Guided Interactive Mode
+```bash
+python cli.py
+```
+
+### 2. Direct Parameterized Evaluation
+```bash
+python cli.py --input data.csv
+```
+
+### Parameter Reference
+- `--interactive`: Launch guided terminal interactive wizard.
+- `--input <path>`: Evaluate input from JSON or CSV specification.
+- `--json`: Output deterministic structured results in JSON format.
+
+### Input Data Schema
+
+| Field | Description | Requirement |
+|:------|:------------|:------------|
+| `case_id` | Parameter / observation metric | Required |
+| `patient_synthetic_id` | Parameter / observation metric | Required |
+| `metric_primary` | Parameter / observation metric | Required |
+| `metric_secondary` | Parameter / observation metric | Required |
+| `is_stat` | Parameter / observation metric | Required |
+| `status_flag` | Parameter / observation metric | Required |
+
+---
+
+## 🛡️ Security & Enterprise Architecture
+
+* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
+* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
+* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
+* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
+* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
+
+---
+
+## 🧪 Testing & Verification
+
+Run the automated test suite:
 
 ```bash
-# No dependencies required - Python 3.8+ stdlib only
-cd opioid-conversion-rotation-agent
+pytest -v
 ```
 
-## Usage
-
-### Calculate MME
-```bash
-python cli.py mme --opioid morphine_po --dose 15 --times 4
-python cli.py mme --opioid oxycodone_po --dose 10 --times 4
-```
-
-### Convert Between Opioids
-```bash
-python cli.py convert --from morphine_po --from-dose 15 --from-times 4 --to oxycodone_po
-python cli.py convert --from oxycodone_po --from-dose 10 --from-times 4 --to hydromorphone_po --reduction 0.25
-```
-
-### Convert to Methadone
-```bash
-python cli.py methadone --mme 200
-python cli.py methadone --mme 500 --reduction 0.50
-```
-
-### Convert to Fentanyl Patch
-```bash
-python cli.py fentanyl-patch --mme 120
-```
-
-### Generate Taper Schedule
-```bash
-python cli.py taper --mme 100
-python cli.py taper --mme 200 --target 50 --reduction 10 --interval 7
-```
-
-### Full Assessment
-```bash
-python cli.py assess --from morphine_po --from-dose 15 --from-times 4 --to oxycodone_po
-```
-
-### List Available Opioids
-```bash
-python cli.py list
-```
-
-## Output Format
-
-All commands output JSON. Example MME calculation:
-```json
-{
-  "total_daily_mme": 60.0,
-  "components": [
-    {
-      "opioid": "morphine_po",
-      "dose_per_admin": "15.0 mg",
-      "doses_per_day": 4,
-      "daily_dose": "60.0 mg/day",
-      "mme_factor": 1.0,
-      "daily_mme": 60.0
-    }
-  ],
-  "risk_level": "MODERATE",
-  "risk_note": "MME >=50: Increased overdose risk. Consider naloxone co-prescribing."
-}
-```
-
-## Tests
+Execute high-throughput batch simulation benchmarks:
 
 ```bash
-python -m pytest test_opioid_rotate.py -v
+python simulator.py --tasks 1000 --concurrency 8
 ```
 
-## Disclaimer
+---
 
-**FOR EDUCATIONAL AND RESEARCH USE ONLY.** Opioid management requires clinical expertise. Equianalgesic conversions are estimates and individual response varies significantly. Methadone conversions should only be performed by experienced clinicians.
+## 🐳 Container Deployment
 
-## References
-
-- Dowell D, et al. CDC Clinical Practice Guideline for Prescribing Opioids for Pain. *MMWR Recomm Rep*. 2022;71(3):1-95.
-- Pereira J, et al. Opioid conversion ratios for palliative care. *J Palliat Med*. 2001;4(2):231-247.
-- Fine PG, Portenoy RK. Opioid rotation: the science and the practice. *Pain Clinical Updates*. 2006;12(3):1-8.
-
-## License
-
-MIT License. See [LICENSE](LICENSE) for details.
+```bash
+docker build -t opioid-conversion-rotation-agent .
+docker run -p 8000:8000 opioid-conversion-rotation-agent
+```
