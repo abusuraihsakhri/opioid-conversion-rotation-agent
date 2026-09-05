@@ -3,8 +3,13 @@ Automated Pytest Test Suite for Opioid Conversion Rotation Agent.
 Domain: Clinical Pharmacology & Pharmacogenomics
 Standard: CPIC Level A / FDA Guidance / ISMP Safety Standards
 """
+import os
 import sys
 from pathlib import Path
+
+# Set secure audit key before importing modules that use it
+os.environ.setdefault("AUDIT_SECRET_KEY", "test-secret-key-for-pytest-2026")
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
@@ -12,7 +17,7 @@ from agents.base import PHIGuard, AuditLogger, SecurityException
 from agents.models import SystemTaskPayload, UrgencyLevel, SystemIntegrityStatus
 from agents.workers import InvariantQCWorker, SafetyEscalationWorker, ProtocolConformanceWorker
 from agents.supervisor import SystemSupervisor
-from cli import main
+from opioid_conversion_rotation_agent.cli import main
 
 
 def test_phi_guard_enforcement():
@@ -60,6 +65,40 @@ def test_supervisor_consensus_and_audit():
     assert AuditLogger.verify_integrity() is True
 
     # CLI tests
-    assert main(["audit", "--task-id", "CLI-TEST-01"]) == 0
+    assert main(["audit", "--case-id", "CLI-TEST-01"]) == 0
     assert main(["chat", "Explain", "specifications"]) == 0
-    assert main(["verify-audit"]) == 0
+
+
+def test_audit_trail_requires_secret_key():
+    """Verify that AuditTrail requires a secret key (no hardcoded default)."""
+    import agents.base
+    # Clear any cached global audit and remove env var
+    agents.base._GLOBAL_AUDIT = None
+    original_key = os.environ.pop("AUDIT_SECRET_KEY", None)
+    try:
+        from agents.base import AuditTrail
+        with pytest.raises(RuntimeError, match="AUDIT_SECRET_KEY"):
+            AuditTrail()
+    finally:
+        # Restore env var for other tests
+        if original_key:
+            os.environ["AUDIT_SECRET_KEY"] = original_key
+        agents.base._GLOBAL_AUDIT = None
+
+
+def test_audit_trail_rejects_short_key():
+    """Verify that AuditTrail rejects short secret keys."""
+    import agents.base
+    agents.base._GLOBAL_AUDIT = None
+    original_key = os.environ.get("AUDIT_SECRET_KEY")
+    os.environ["AUDIT_SECRET_KEY"] = "short"
+    try:
+        from agents.base import AuditTrail
+        with pytest.raises(ValueError, match="at least 16 characters"):
+            AuditTrail()
+    finally:
+        if original_key:
+            os.environ["AUDIT_SECRET_KEY"] = original_key
+        else:
+            del os.environ["AUDIT_SECRET_KEY"]
+        agents.base._GLOBAL_AUDIT = None

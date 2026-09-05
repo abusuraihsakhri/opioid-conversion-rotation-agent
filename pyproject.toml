@@ -25,3 +25,13 @@ opioid-conversion-rotation-engine = "opioid_conversion_rotation_agent.cli:main"
 [project.urls]
 Homepage = "https://github.com/abusuraihsakhri/opioid-conversion-rotation-engine"
 Repository = "https://github.com/abusuraihsakhri/opioid-conversion-rotation-engine.git"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.setuptools.packages.find]
+include = ["agents*", "opioid_conversion_rotation_agent*"]

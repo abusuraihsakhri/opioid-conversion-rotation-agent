@@ -214,10 +214,17 @@ def calculate_mme(opioid_doses: List[Dict[str, Any]]) -> Dict[str, Any]:
         else:
             dose_mg = entry.get("dose_mg", 0)
             doses_per_day = entry.get("doses_per_day", 1)
-            
+
+            if not isinstance(dose_mg, (int, float)) or not isinstance(doses_per_day, (int, float)):
+                raise ValueError(f"Dose and doses_per_day for {opioid} must be numeric")
+
             if dose_mg <= 0:
                 raise ValueError(f"Dose for {opioid} must be positive")
-            
+            if doses_per_day <= 0:
+                raise ValueError(f"Doses per day for {opioid} must be positive")
+            if doses_per_day > 100:
+                raise ValueError(f"Doses per day for {opioid} exceeds maximum (100)")
+
             daily_dose = dose_mg * doses_per_day
             mme = daily_dose * info["mme_factor"]
             
@@ -290,9 +297,15 @@ def convert_opioid(
         raise ValueError(f"Unknown source opioid: {source_opioid}")
     if target_key not in EQUIANALGESIC_TABLE:
         raise ValueError(f"Unknown target opioid: {target_opioid}")
+    if not isinstance(source_dose_mg, (int, float)) or source_dose_mg <= 0:
+        raise ValueError("Source dose must be a positive number")
+    if not isinstance(source_doses_per_day, int) or source_doses_per_day <= 0:
+        raise ValueError("Source doses per day must be a positive integer")
     if cross_tolerance_reduction < 0 or cross_tolerance_reduction >= 1:
         raise ValueError("Cross-tolerance reduction must be between 0 and 1")
-    
+    if not isinstance(doses_per_day_target, int) or doses_per_day_target <= 0:
+        raise ValueError("Target doses per day must be a positive integer")
+
     source_info = EQUIANALGESIC_TABLE[source_key]
     target_info = EQUIANALGESIC_TABLE[target_key]
     

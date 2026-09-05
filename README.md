@@ -154,8 +154,14 @@ pytest -v
 Execute high-throughput batch simulation benchmarks:
 
 ```bash
-python simulator.py --tasks 1000 --concurrency 8
+python simulator.py 1000
 ```
+
+### Environment Variables
+
+| Variable | Required | Description |
+|:---------|:---------|:------------|
+| `AUDIT_SECRET_KEY` | Yes (for audit features) | Secret key for HMAC-SHA256 audit trail. Must be at least 16 characters. Generate with: `python -c "import secrets; print(secrets.token_hex(32))"` |
 
 ---
 

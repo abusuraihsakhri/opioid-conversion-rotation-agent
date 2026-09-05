@@ -93,6 +93,22 @@ class TestMME:
         with pytest.raises(ValueError):
             calculate_mme([{"opioid": "morphine_po", "dose_mg": 0, "doses_per_day": 1}])
 
+    def test_negative_dose(self):
+        with pytest.raises(ValueError):
+            calculate_mme([{"opioid": "morphine_po", "dose_mg": -10, "doses_per_day": 1}])
+
+    def test_zero_doses_per_day(self):
+        with pytest.raises(ValueError):
+            calculate_mme([{"opioid": "morphine_po", "dose_mg": 10, "doses_per_day": 0}])
+
+    def test_negative_doses_per_day(self):
+        with pytest.raises(ValueError):
+            calculate_mme([{"opioid": "morphine_po", "dose_mg": 10, "doses_per_day": -1}])
+
+    def test_excessive_doses_per_day(self):
+        with pytest.raises(ValueError):
+            calculate_mme([{"opioid": "morphine_po", "dose_mg": 10, "doses_per_day": 150}])
+
 
 # ============================================================================
 # Opioid Conversion Tests
@@ -142,6 +158,22 @@ class TestConversion:
     def test_invalid_reduction(self):
         with pytest.raises(ValueError):
             convert_opioid("morphine_po", 10, 4, "oxycodone_po", cross_tolerance_reduction=1.5)
+
+    def test_negative_source_dose(self):
+        with pytest.raises(ValueError):
+            convert_opioid("morphine_po", -10, 4, "oxycodone_po")
+
+    def test_zero_source_dose(self):
+        with pytest.raises(ValueError):
+            convert_opioid("morphine_po", 0, 4, "oxycodone_po")
+
+    def test_zero_source_doses_per_day(self):
+        with pytest.raises(ValueError):
+            convert_opioid("morphine_po", 10, 0, "oxycodone_po")
+
+    def test_zero_target_doses_per_day(self):
+        with pytest.raises(ValueError):
+            convert_opioid("morphine_po", 10, 4, "oxycodone_po", doses_per_day_target=0)
 
 
 # ============================================================================
