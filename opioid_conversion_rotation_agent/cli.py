@@ -65,7 +65,7 @@ def main(argv=None):
         dossier = coordinator.process_case(case)
         print("=" * 80)
         print(f"  OPIOIDROTATE SENTINEL: EQUIANALGESIC CONVERSION & INCOMPLETE CROSS-TOLERANCE AGENT")
-        print(f"  Domain: Palliative Medicine | Standard: EAPC Equianalgesic Opioid Conversion")
+        print(f"  Domain: Palliative Medicine | Standard: Research-only demonstration thresholds; not a clinical protocol")
         print(f"  Case: {dossier['case_id']} | Status: [{dossier['overall_status']}] | Total Alerts: {dossier['total_alerts']}")
         print("=" * 80)
         for a in dossier["alerts"]:
