@@ -35,9 +35,9 @@ class TestMME:
         assert abs(result["total_daily_mme"] - 40.0) < 0.1
 
     def test_hydromorphone_po(self):
-        # 4mg * 4 = 16mg/day * 4.0 = 64 MME
+        # 4mg * 4 = 16mg/day * 5.0 = 80 MME (CDC 2022)
         result = calculate_mme([{"opioid": "hydromorphone_po", "dose_mg": 4, "doses_per_day": 4}])
-        assert abs(result["total_daily_mme"] - 64.0) < 0.1
+        assert abs(result["total_daily_mme"] - 80.0) < 0.1
 
     def test_fentanyl_patch(self):
         # 50 mcg/hr * 2.4 = 120 MME/day
@@ -50,9 +50,9 @@ class TestMME:
         assert abs(result["total_daily_mme"] - 36.0) < 0.1
 
     def test_tramadol_po(self):
-        # 50mg * 4 = 200mg/day * 0.15 = 30 MME
+        # 50mg * 4 = 200mg/day * 0.2 = 40 MME (CDC 2022)
         result = calculate_mme([{"opioid": "tramadol_po", "dose_mg": 50, "doses_per_day": 4}])
-        assert abs(result["total_daily_mme"] - 30.0) < 0.1
+        assert abs(result["total_daily_mme"] - 40.0) < 0.1
 
     def test_multiple_opioids(self):
         result = calculate_mme([
@@ -301,7 +301,8 @@ class TestEquianalgesicTable:
 
     def test_hydromorphone_ratio(self):
         assert EQUIANALGESIC_TABLE["hydromorphone_po"]["dose"] == 7.5
-        assert EQUIANALGESIC_TABLE["hydromorphone_po"]["mme_factor"] == 4.0
+        assert EQUIANALGESIC_TABLE["hydromorphone_po"]["mme_factor"] == 5.0
+        assert EQUIANALGESIC_TABLE["hydromorphone_po"]["equianalgesic_factor"] == 4.0
 
     def test_codeine_ratio(self):
         assert EQUIANALGESIC_TABLE["codeine_po"]["dose"] == 200.0
@@ -365,3 +366,69 @@ class TestCLI:
         ret = main(["assess", "--from", "morphine_po", "--from-dose", "15",
                      "--from-times", "4", "--to", "oxycodone_po"])
         assert ret == 0
+
+
+# Regression tests for clinically consequential edge cases.
+
+@pytest.mark.parametrize("dose", [float("nan"), float("inf"), float("-inf"), True, "10", -5, 0])
+def test_mme_rejects_invalid_numeric_dose(dose):
+    with pytest.raises(ValueError):
+        calculate_mme([{"opioid": "morphine_po", "dose_mg": dose, "doses_per_day": 4}])
+
+
+@pytest.mark.parametrize("dose", [float("nan"), float("inf"), True, 0, -1, "50"])
+def test_patch_mme_rejects_invalid_rate(dose):
+    with pytest.raises(ValueError):
+        calculate_mme([{"opioid": "fentanyl_patch", "dose_mcg_per_hr": dose}])
+
+
+def test_injectable_fentanyl_requires_explicit_micrograms():
+    with pytest.raises(ValueError):
+        calculate_mme([{"opioid": "fentanyl_iv", "dose_mg": 100, "doses_per_day": 1}])
+    result = calculate_mme([{"opioid": "fentanyl_iv", "dose_mcg": 100, "doses_per_day": 1}])
+    assert result["total_daily_mme"] == 10.0
+
+
+@pytest.mark.parametrize("source,target", [
+    ("methadone_po", "morphine_po"),
+    ("morphine_po", "methadone_po"),
+    ("morphine_po", "fentanyl_patch"),
+    ("fentanyl_iv", "morphine_po"),
+    ("morphine_po", "morphine_po"),
+])
+def test_generic_conversion_rejects_unsafe_routes(source, target):
+    with pytest.raises(ValueError):
+        convert_opioid(source, 10, 4, target)
+
+
+def test_no_patch_strength_selected_from_mme():
+    result = convert_to_fentanyl_patch(120)
+    assert result["recommended_patch_mcg_per_hr"] is None
+
+
+def test_methadone_no_automatic_prescribed_frequency():
+    result = convert_to_methadone(200)
+    assert result["dosing_schedule"]["dose_per_admin_mg"] is None
+
+
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), True])
+def test_non_finite_methadone_mme_rejected(invalid):
+    with pytest.raises(ValueError):
+        convert_to_methadone(invalid)
+
+
+def test_invalid_taper_controls_rejected():
+    for kwargs in [
+        {"interval_days": 0},
+        {"interval_days": -1},
+        {"min_step_mme": 0},
+        {"min_step_mme": -5},
+        {"reduction_percent": float("nan")},
+    ]:
+        with pytest.raises(ValueError):
+            generate_taper_schedule(100, **kwargs)
+
+
+def test_taper_final_step_records_remaining_reduction():
+    schedule = generate_taper_schedule(100, min_step_mme=5)["schedule"]
+    assert schedule[-1]["reduction_mme"] >= 0

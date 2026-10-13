@@ -3,6 +3,7 @@ Distributed Component Hierarchy & Executive Coordinator for OpioidRotate Sentine
 Domain: Palliative Medicine
 """
 import uuid
+import math
 from typing import Dict, Any, List, Optional
 from .models import ClinicalCasePayload, AgentAlert, UrgencyLevel, ClinicalIntegrityStatus
 from .engine import ClinicalDomainEngine
@@ -68,6 +69,10 @@ class OpioidRotateCoordinator:
         self.case_registry: Dict[str, Dict[str, Any]] = {}
 
     def process_case(self, case: ClinicalCasePayload) -> Dict[str, Any]:
+        if not all(isinstance(value, (int, float)) and not isinstance(value, bool)
+                   and math.isfinite(value)
+                   for value in (case.primary_metric, case.secondary_metric)):
+            raise ValueError("Primary and secondary metrics must be finite numbers")
         all_alerts: List[AgentAlert] = []
         all_alerts.extend(self.agent_1.audit(case))
         all_alerts.extend(self.agent_2.audit(case))
@@ -93,7 +98,7 @@ class OpioidRotateCoordinator:
             "stat_critical_alerts": stat_count,
             "warning_alerts": warn_count,
             "alerts": [a.to_dict() for a in all_alerts],
-            "guideline_standard": "EAPC Equianalgesic Opioid Conversion",
+            "guideline_standard": "Research-only numeric threshold demonstration; not clinically validated",
             "consensus_summary": f"Multi-agent supervision completed across 3 sub-agents with status [{status.value}].",
         }
 
@@ -105,6 +110,6 @@ class OpioidRotateCoordinator:
         if "status" in q or "summary" in q:
             return f"OpioidRotate Sentinel: Equianalgesic Conversion & Incomplete Cross-Tolerance Agent currently tracking {len(self.case_registry)} cases in on-premises memory."
         elif "guideline" in q or "standard" in q:
-            return "Active clinical surveillance operates under EAPC Equianalgesic Opioid Conversion validated protocols."
+            return "This service implements demonstration numeric thresholds only; no clinical or opioid conversion protocol is validated."
         else:
-            return f"OpioidRotate Sentinel: Equianalgesic Conversion & Incomplete Cross-Tolerance Agent executive agent online. Zero-PHI air-gapped monitoring active."
+            return "Demo coordinator active; do not enter patient-identifying information."

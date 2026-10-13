@@ -73,7 +73,7 @@ EQUIANALGESIC_TABLE = {
         "dose": 25.0,
         "unit": "mcg/hr",
         "route": "transdermal",
-        "mme_factor": 2.4,  # 1mcg/hr patch ≈ 2.4mg/hr PO morphine... simplified
+        "mme_factor": 2.4,  # 1 mcg/hr transdermal fentanyl ≈ 2.4 MME/day (CDC 2022)
         "onset_minutes": 720,  # 12 hours to full effect
         "duration_hours": 72,
         "half_life_hours": 17.0,
@@ -83,7 +83,8 @@ EQUIANALGESIC_TABLE = {
         "dose": 7.5,
         "unit": "mg",
         "route": "oral",
-        "mme_factor": 4.0,  # 1mg PO = 4mg PO morphine equivalent
+        "mme_factor": 5.0,  # CDC 2022 MME factor (NOT an opioid-rotation ratio)
+        "equianalgesic_factor": 4.0,  # historical equianalgesic estimate
         "onset_minutes": 30,
         "duration_hours": 4,
         "half_life_hours": 2.5
@@ -128,7 +129,8 @@ EQUIANALGESIC_TABLE = {
         "dose": 100.0,
         "unit": "mg",
         "route": "oral",
-        "mme_factor": 0.15,  # 1mg PO ≈ 0.1-0.2mg PO morphine equivalent
+        "mme_factor": 0.2,  # CDC 2022 MME factor
+        "equianalgesic_factor": 0.15,  # historical equianalgesic estimate
         "onset_minutes": 60,
         "duration_hours": 6,
         "half_life_hours": 6.0
@@ -137,7 +139,7 @@ EQUIANALGESIC_TABLE = {
         "dose": 20.0,  # Variable - depends on total MME
         "unit": "mg",
         "route": "oral",
-        "mme_factor": 3.0,  # Highly variable
+        "mme_factor": 4.7,  # CDC 2022 MME factor; not suitable for opioid rotation
         "onset_minutes": 30,
         "duration_hours": 8,
         "half_life_hours": 24.0,
@@ -202,8 +204,9 @@ def calculate_mme(opioid_doses: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Handle fentanyl patch specially
         if opioid == "fentanyl_patch":
             mcg_per_hr = entry.get("dose_mcg_per_hr", 0)
-            if mcg_per_hr <= 0:
-                raise ValueError("Fentanyl patch dose must be positive")
+            if (isinstance(mcg_per_hr, bool) or not isinstance(mcg_per_hr, (int, float))
+                    or not math.isfinite(mcg_per_hr) or mcg_per_hr <= 0):
+                raise ValueError("Fentanyl patch delivery rate must be a finite positive number in mcg/hr")
             mme = mcg_per_hr * info.get("mme_per_mcg_hr_per_day", 2.4)
             components.append({
                 "opioid": opioid,
@@ -212,16 +215,16 @@ def calculate_mme(opioid_doses: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "calculation": f"{mcg_per_hr} mcg/hr * {info['mme_per_mcg_hr_per_day']} MME/mcg/hr/day"
             })
         else:
-            dose_mg = entry.get("dose_mg", 0)
+            # Injectable fentanyl is measured in micrograms, not milligrams.
+            dose_field = "dose_mcg" if opioid == "fentanyl_iv" else "dose_mg"
+            dose_mg = entry.get(dose_field, 0)
             doses_per_day = entry.get("doses_per_day", 1)
-
-            if not isinstance(dose_mg, (int, float)) or not isinstance(doses_per_day, (int, float)):
-                raise ValueError(f"Dose and doses_per_day for {opioid} must be numeric")
-
-            if dose_mg <= 0:
-                raise ValueError(f"Dose for {opioid} must be positive")
-            if doses_per_day <= 0:
-                raise ValueError(f"Doses per day for {opioid} must be positive")
+            if (isinstance(dose_mg, bool) or not isinstance(dose_mg, (int, float))
+                    or not math.isfinite(dose_mg) or dose_mg <= 0):
+                raise ValueError(f"{dose_field} for {opioid} must be finite and positive")
+            if (isinstance(doses_per_day, bool) or not isinstance(doses_per_day, int)
+                    or doses_per_day <= 0):
+                raise ValueError(f"doses_per_day for {opioid} must be a positive integer")
             if doses_per_day > 100:
                 raise ValueError(f"Doses per day for {opioid} exceeds maximum (100)")
 
@@ -243,16 +246,16 @@ def calculate_mme(opioid_doses: List[Dict[str, Any]]) -> Dict[str, Any]:
     # Risk stratification
     if total_mme >= 200:
         risk = "VERY_HIGH"
-        risk_note = "MME >=200: Very high overdose risk. Strongly consider naloxone co-prescribing and pain specialist referral."
+        risk_note = "Illustrative MME band ≥200; this is not a validated individual overdose-risk classification."
     elif total_mme >= 90:
         risk = "HIGH"
-        risk_note = "MME >=90: High overdose risk. CDC recommends careful justification and naloxone co-prescribing."
+        risk_note = "Illustrative MME band ≥90; this is not a prescribing cutoff or validated risk category."
     elif total_mme >= 50:
         risk = "MODERATE"
-        risk_note = "MME >=50: Increased overdose risk. Consider naloxone co-prescribing."
+        risk_note = "Higher MME exposure warrants individualized assessment; this band is not a risk prediction."
     else:
         risk = "LOW"
-        risk_note = "MME <50: Lower risk. Continue monitoring."
+        risk_note = "Overdose is possible at any dose; lower calculated MME does not establish safety."
     
     return {
         "total_daily_mme": round(total_mme, 1),
@@ -260,7 +263,8 @@ def calculate_mme(opioid_doses: List[Dict[str, Any]]) -> Dict[str, Any]:
         "risk_level": risk,
         "risk_note": risk_note,
         "num_opioids": len(opioid_doses),
-        "polypharmacy_warning": len(opioid_doses) > 1
+        "polypharmacy_warning": len(opioid_doses) > 1,
+        "classification_note": "Descriptive legacy MME bands only; not guideline risk categories or prescribing limits."
     }
 
 
@@ -297,14 +301,27 @@ def convert_opioid(
         raise ValueError(f"Unknown source opioid: {source_opioid}")
     if target_key not in EQUIANALGESIC_TABLE:
         raise ValueError(f"Unknown target opioid: {target_opioid}")
-    if not isinstance(source_dose_mg, (int, float)) or source_dose_mg <= 0:
-        raise ValueError("Source dose must be a positive number")
-    if not isinstance(source_doses_per_day, int) or source_doses_per_day <= 0:
-        raise ValueError("Source doses per day must be a positive integer")
-    if cross_tolerance_reduction < 0 or cross_tolerance_reduction >= 1:
-        raise ValueError("Cross-tolerance reduction must be between 0 and 1")
-    if not isinstance(doses_per_day_target, int) or doses_per_day_target <= 0:
-        raise ValueError("Target doses per day must be a positive integer")
+    # These estimates are NOT a substitute for clinician-directed opioid rotation.
+    # A generic mg-per-administration interface cannot safely describe fentanyl,
+    # patches or non-linear methadone conversions.
+    unsafe_routes = {"fentanyl_iv", "fentanyl_patch", "methadone_po"}
+    if source_key in unsafe_routes or target_key in unsafe_routes:
+        raise ValueError("Methadone and fentanyl require formulation-specific specialist conversion; this generic function does not support them")
+    if source_key == target_key:
+        raise ValueError("Source and target are identical; cross-tolerance reduction is not applicable")
+    if (isinstance(source_dose_mg, bool) or not isinstance(source_dose_mg, (int, float))
+            or not math.isfinite(source_dose_mg) or source_dose_mg <= 0):
+        raise ValueError("Source dose must be finite and positive")
+    if (isinstance(source_doses_per_day, bool) or not isinstance(source_doses_per_day, int)
+            or not 1 <= source_doses_per_day <= 100):
+        raise ValueError("Source doses per day must be an integer between 1 and 100")
+    if (isinstance(cross_tolerance_reduction, bool) or not isinstance(cross_tolerance_reduction, (int, float))
+            or not math.isfinite(cross_tolerance_reduction)
+            or not 0 <= cross_tolerance_reduction < 1):
+        raise ValueError("Cross-tolerance reduction must be finite and between 0 and 1")
+    if (isinstance(doses_per_day_target, bool) or not isinstance(doses_per_day_target, int)
+            or not 1 <= doses_per_day_target <= 100):
+        raise ValueError("Target doses per day must be an integer between 1 and 100")
 
     source_info = EQUIANALGESIC_TABLE[source_key]
     target_info = EQUIANALGESIC_TABLE[target_key]
@@ -312,11 +329,17 @@ def convert_opioid(
     # Step 1: Calculate total daily source dose
     daily_source_dose = source_dose_mg * source_doses_per_day
     
-    # Step 2: Convert to morphine PO equivalents (MME)
+    # MME is for exposure comparison, NOT the basis for an opioid rotation dose.
     daily_mme = daily_source_dose * source_info["mme_factor"]
-    
-    # Step 3: Convert MME to target opioid daily dose
-    target_daily_dose = daily_mme / target_info["mme_factor"]
+
+    # Separate historical equianalgesic factors from CDC MME surveillance factors.
+    # This arithmetic is illustrative and is not a prescribing recommendation.
+    equivalent_morphine = daily_source_dose * source_info.get(
+        "equianalgesic_factor", source_info["mme_factor"]
+    )
+    target_daily_dose = equivalent_morphine / target_info.get(
+        "equianalgesic_factor", target_info["mme_factor"]
+    )
     
     # Step 4: Apply cross-tolerance reduction
     reduced_daily_dose = target_daily_dose * (1 - cross_tolerance_reduction)
@@ -344,7 +367,8 @@ def convert_opioid(
             f"Cross-tolerance reduction: {cross_tolerance_reduction * 100:.0f}%",
             "Monitor for over-sedation and respiratory depression",
             "Consider patient-specific factors (age, renal/hepatic function, concurrent medications)",
-            "Methadone conversions require specialist guidance"
+            "Do not prescribe or rotate opioids on the basis of an MME calculation",
+            "Methadone and transdermal fentanyl require separate specialist pathways"
         ],
         "disclaimer": "FOR EDUCATIONAL/RESEARCH USE ONLY. Opioid rotation requires clinical expertise."
     }
@@ -367,9 +391,15 @@ def convert_to_methadone(
     Returns:
         Dictionary with methadone conversion
     """
-    if total_daily_mme <= 0:
-        raise ValueError("Total MME must be positive")
-    
+    if (isinstance(total_daily_mme, bool) or not isinstance(total_daily_mme, (int, float))
+            or not math.isfinite(total_daily_mme) or total_daily_mme <= 0):
+        raise ValueError("Total MME must be finite and positive")
+    if (isinstance(cross_tolerance_reduction, bool)
+            or not isinstance(cross_tolerance_reduction, (int, float))
+            or not math.isfinite(cross_tolerance_reduction)
+            or not 0 <= cross_tolerance_reduction < 1):
+        raise ValueError("Cross-tolerance reduction must be finite and between 0 and 1")
+
     # Find appropriate conversion ratio
     ratio = 4  # Default
     for (min_mme, max_mme), r in METHADONE_CONVERSION_FACTORS.items():
@@ -393,9 +423,9 @@ def convert_to_methadone(
         "cross_tolerance_reduction_percent": cross_tolerance_reduction * 100,
         "reduced_daily_dose_mg": round(reduced_dose, 1),
         "dosing_schedule": {
-            "dose_per_admin_mg": round(dose_per_admin, 1),
-            "frequency": "TID (every 8 hours)",
-            "note": "Start with TID dosing; may consolidate to BID or daily once stable"
+            "dose_per_admin_mg": None,
+            "frequency": "Not determined by this tool",
+            "note": "Do not use the illustrative ratio to initiate methadone; a specialist must individualize dosing and monitoring"
         },
         "critical_warnings": [
             "Methadone has a LONG and VARIABLE half-life (15-60+ hours)",
@@ -438,14 +468,17 @@ def generate_taper_schedule(
     Returns:
         Dictionary with tapering schedule
     """
-    if current_daily_mme <= 0:
-        raise ValueError("Current MME must be positive")
-    if target_daily_mme < 0:
-        raise ValueError("Target MME must be non-negative")
-    if target_daily_mme >= current_daily_mme:
-        raise ValueError("Target must be less than current for tapering")
-    if reduction_percent <= 0 or reduction_percent >= 100:
+    values = (current_daily_mme, target_daily_mme, reduction_percent, min_step_mme)
+    if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
+        raise ValueError("Tapering parameters must be finite numbers")
+    if current_daily_mme <= 0 or target_daily_mme < 0 or target_daily_mme >= current_daily_mme:
+        raise ValueError("Current MME must be positive and target must be lower but non-negative")
+    if not 0 < reduction_percent < 100:
         raise ValueError("Reduction percent must be between 0 and 100")
+    if min_step_mme <= 0:
+        raise ValueError("Minimum step must be positive")
+    if isinstance(interval_days, bool) or not isinstance(interval_days, int) or not 1 <= interval_days <= 365:
+        raise ValueError("Interval days must be an integer from 1 to 365")
     
     steps = []
     current = current_daily_mme
@@ -466,12 +499,12 @@ def generate_taper_schedule(
         current = new_dose
         day += interval_days
     
-    # Add final target
+    # Final step records the residual decrement rather than silently jumping to zero.
     steps.append({
         "step": len(steps) + 1,
         "day": day,
         "mme": round(target_daily_mme, 1),
-        "reduction_mme": 0,
+        "reduction_mme": round(current - target_daily_mme, 1),
         "percent_of_original": round((target_daily_mme / current_daily_mme) * 100, 1) if current_daily_mme > 0 else 0
     })
     
@@ -522,9 +555,15 @@ def convert_to_fentanyl_patch(
     Returns:
         Dictionary with fentanyl patch conversion
     """
-    if total_daily_mme <= 0:
-        raise ValueError("Total MME must be positive")
-    
+    if (isinstance(total_daily_mme, bool) or not isinstance(total_daily_mme, (int, float))
+            or not math.isfinite(total_daily_mme) or total_daily_mme <= 0):
+        raise ValueError("Total MME must be finite and positive")
+    if (isinstance(cross_tolerance_reduction, bool)
+            or not isinstance(cross_tolerance_reduction, (int, float))
+            or not math.isfinite(cross_tolerance_reduction)
+            or not 0 <= cross_tolerance_reduction < 1):
+        raise ValueError("Cross-tolerance reduction must be finite and between 0 and 1")
+
     # Convert MME to mcg/hr
     # 1 mcg/hr ≈ 2.4 MME/day
     mcg_per_hr = total_daily_mme / 2.4
@@ -534,7 +573,8 @@ def convert_to_fentanyl_patch(
     
     # Round to available patch sizes (12, 25, 50, 75, 100 mcg/hr)
     available_sizes = [12, 25, 50, 75, 100]
-    rounded_mcg = min(available_sizes, key=lambda x: abs(x - reduced_mcg_per_hr))
+    # Do not select a patch strength using an MME-derived estimate.
+    rounded_mcg = None
     
     return {
         "total_daily_mme": total_daily_mme,
@@ -542,6 +582,7 @@ def convert_to_fentanyl_patch(
         "cross_tolerance_reduction_percent": cross_tolerance_reduction * 100,
         "reduced_mcg_per_hr": round(reduced_mcg_per_hr, 1),
         "recommended_patch_mcg_per_hr": rounded_mcg,
+        "patch_selection_note": "Not calculated: use FDA product labeling and specialist assessment",
         "available_sizes": available_sizes,
         "application_notes": [
             "Apply to clean, dry, hairless skin on torso or upper arm",
@@ -549,7 +590,7 @@ def convert_to_fentanyl_patch(
             "Change patch every 72 hours",
             "Do not cut patches",
             "Store unused patches at room temperature",
-            "Dispose of used patches by folding and flushing"
+            "Follow the current product-specific disposal instructions and local regulations"
         ],
         "warnings": [
             "Fentanyl patches are for opioid-tolerant patients only",
@@ -622,12 +663,12 @@ def _generate_safety_alerts(total_mme: float) -> List[str]:
     
     if total_mme >= 200:
         alerts.append("CRITICAL: MME >=200. Strongly consider pain specialist referral.")
-        alerts.append("CRITICAL: Co-prescribe naloxone. Educate patient and family on overdose response.")
+        alerts.append("Consider overdose education and access to naloxone after individualized review.")
     elif total_mme >= 90:
-        alerts.append("WARNING: MME >=90. CDC recommends careful justification of dose.")
-        alerts.append("WARNING: Consider naloxone co-prescribing.")
+        alerts.append("High numerical exposure; no automatic prescribing threshold is implied.")
+        alerts.append("Assess naloxone availability and other risk mitigation clinically.")
     elif total_mme >= 50:
-        alerts.append("CAUTION: MME >=50. Increased overdose risk.")
+        alerts.append("Numerical exposure ≥50 MME/day warrants review; not a hard dosage limit.")
     
     alerts.append("Assess for sleep apnea and respiratory depression risk factors.")
     alerts.append("Avoid concurrent benzodiazepines, gabapentinoids, and other CNS depressants.")

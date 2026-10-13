@@ -13,18 +13,21 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Topic :: Scientific/Engineering :: Medical Science Apps.",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 requires-python = ">=3.9"
-dependencies = []
+dependencies = ["pydantic>=2,<3"]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.111,<1", "uvicorn>=0.30,<1"]
+test = ["pytest>=8,<10", "httpx>=0.27,<1"]
 
 [project.scripts]
 opioid-conversion-rotation-engine = "opioid_conversion_rotation_agent.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/abusuraihsakhri/opioid-conversion-rotation-engine"
-Repository = "https://github.com/abusuraihsakhri/opioid-conversion-rotation-engine.git"
+Homepage = "https://github.com/abusuraihsakhri/opioid-conversion-rotation-agent"
+Repository = "https://github.com/abusuraihsakhri/opioid-conversion-rotation-agent.git"
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "."]

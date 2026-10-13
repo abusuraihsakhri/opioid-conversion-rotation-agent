@@ -11,6 +11,20 @@ from .agents import OpioidRotateCoordinator
 coordinator = OpioidRotateCoordinator()
 
 
+def parse_csv_boolean(value):
+    """Parse explicit CSV booleans; nonempty strings such as "false" are false."""
+    if isinstance(value, bool):
+        return value
+    if value is None or str(value).strip() == "":
+        return False
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "y"}:
+        return True
+    if text in {"false", "0", "no", "n"}:
+        return False
+    raise ValueError(f"Invalid is_stat boolean: {value!r}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="opioid-conversion-rotation-agent", description="OpioidRotate Sentinel: Equianalgesic Conversion & Incomplete Cross-Tolerance Agent")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -51,7 +65,7 @@ def main(argv=None):
         dossier = coordinator.process_case(case)
         print("=" * 80)
         print(f"  OPIOIDROTATE SENTINEL: EQUIANALGESIC CONVERSION & INCOMPLETE CROSS-TOLERANCE AGENT")
-        print(f"  Domain: Palliative Medicine | Standard: EAPC Equianalgesic Opioid Conversion")
+        print(f"  Domain: Palliative Medicine | Standard: Research-only demonstration thresholds; not a clinical protocol")
         print(f"  Case: {dossier['case_id']} | Status: [{dossier['overall_status']}] | Total Alerts: {dossier['total_alerts']}")
         print("=" * 80)
         for a in dossier["alerts"]:
@@ -73,7 +87,7 @@ def main(argv=None):
             fieldnames = list(reader.fieldnames or [])
             rows = list(reader)
 
-        out_fields = fieldnames + ["overall_status", "total_alerts", "stat_critical_alerts", "consensus_summary"]
+        out_fields = list(dict.fromkeys(fieldnames + ["overall_status", "total_alerts", "stat_critical_alerts", "consensus_summary"]))
         out_rows = []
         for r in rows:
             case = ClinicalCasePayload(
@@ -82,7 +96,7 @@ def main(argv=None):
                 primary_metric=float(r.get("metric_primary", r.get("primary_metric", 15.0))),
                 secondary_metric=float(r.get("metric_secondary", r.get("secondary_metric", 5.0))),
                 status_flag=r.get("status_flag", r.get("status_text", "NORMAL")),
-                is_stat=bool(r.get("is_stat", r.get("critical_flag", False))),
+                is_stat=parse_csv_boolean(r.get("is_stat", r.get("critical_flag", False))),
             )
             dossier = coordinator.process_case(case)
             row_dict = dict(r)
