@@ -10,7 +10,7 @@ coordinator = OpioidRotateCoordinator()
 def create_app():
     try:
         from fastapi import FastAPI
-        from pydantic import BaseModel
+        from pydantic import BaseModel, ConfigDict
 
         app = FastAPI(
             title="OpioidRotate Sentinel: Equianalgesic Conversion & Incomplete Cross-Tolerance Agent",
@@ -19,6 +19,7 @@ def create_app():
         )
 
         class AuditRequest(BaseModel):
+            model_config = ConfigDict(allow_inf_nan=False)
             case_id: str = "CASE-2026-001"
             patient_synthetic_id: str = "SYNTH-PT-881"
             primary_metric: float = 24.5
