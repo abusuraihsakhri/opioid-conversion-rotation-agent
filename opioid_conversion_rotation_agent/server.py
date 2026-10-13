@@ -14,7 +14,7 @@ def create_app():
 
         app = FastAPI(
             title="OpioidRotate Sentinel: Equianalgesic Conversion & Incomplete Cross-Tolerance Agent",
-            description="Converts Morphine, Fentanyl, Oxycodone, Hydromorphone, and Methadone with 25-50% dose reduction for incomplete cross-tolerance.",
+            description="Research-only demonstration of generic numeric-threshold audits; does not calculate or recommend opioid doses.",
             version="2.0.0-PRO",
         )
 
