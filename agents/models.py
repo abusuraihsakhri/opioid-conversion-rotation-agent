@@ -6,7 +6,7 @@ Standard: CPIC Level A / FDA Guidance / ISMP Safety Standards
 import datetime
 from enum import Enum
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class UrgencyLevel(str, Enum):
@@ -22,6 +22,7 @@ class SystemIntegrityStatus(str, Enum):
 
 
 class SystemTaskPayload(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
     task_id: str = Field(..., description="Unique task / case identifier")
     target_identifier: str = Field(..., description="Entity, patient key, or genomic/cryptographic target")
     primary_metric: float = Field(..., description="Primary domain measurement or score")
