@@ -246,16 +246,16 @@ def calculate_mme(opioid_doses: List[Dict[str, Any]]) -> Dict[str, Any]:
     # Risk stratification
     if total_mme >= 200:
         risk = "VERY_HIGH"
-        risk_note = "MME >=200: Very high overdose risk. Strongly consider naloxone co-prescribing and pain specialist referral."
+        risk_note = "Illustrative MME band ≥200; this is not a validated individual overdose-risk classification."
     elif total_mme >= 90:
         risk = "HIGH"
-        risk_note = "MME >=90: High overdose risk. CDC recommends careful justification and naloxone co-prescribing."
+        risk_note = "Illustrative MME band ≥90; this is not a prescribing cutoff or validated risk category."
     elif total_mme >= 50:
         risk = "MODERATE"
-        risk_note = "MME >=50: Increased overdose risk. Consider naloxone co-prescribing."
+        risk_note = "Higher MME exposure warrants individualized assessment; this band is not a risk prediction."
     else:
         risk = "LOW"
-        risk_note = "MME <50: Lower risk. Continue monitoring."
+        risk_note = "Overdose is possible at any dose; lower calculated MME does not establish safety."
     
     return {
         "total_daily_mme": round(total_mme, 1),
@@ -263,7 +263,8 @@ def calculate_mme(opioid_doses: List[Dict[str, Any]]) -> Dict[str, Any]:
         "risk_level": risk,
         "risk_note": risk_note,
         "num_opioids": len(opioid_doses),
-        "polypharmacy_warning": len(opioid_doses) > 1
+        "polypharmacy_warning": len(opioid_doses) > 1,
+        "classification_note": "Descriptive legacy MME bands only; not guideline risk categories or prescribing limits."
     }
 
 
@@ -662,12 +663,12 @@ def _generate_safety_alerts(total_mme: float) -> List[str]:
     
     if total_mme >= 200:
         alerts.append("CRITICAL: MME >=200. Strongly consider pain specialist referral.")
-        alerts.append("CRITICAL: Co-prescribe naloxone. Educate patient and family on overdose response.")
+        alerts.append("Consider overdose education and access to naloxone after individualized review.")
     elif total_mme >= 90:
-        alerts.append("WARNING: MME >=90. CDC recommends careful justification of dose.")
-        alerts.append("WARNING: Consider naloxone co-prescribing.")
+        alerts.append("High numerical exposure; no automatic prescribing threshold is implied.")
+        alerts.append("Assess naloxone availability and other risk mitigation clinically.")
     elif total_mme >= 50:
-        alerts.append("CAUTION: MME >=50. Increased overdose risk.")
+        alerts.append("Numerical exposure ≥50 MME/day warrants review; not a hard dosage limit.")
     
     alerts.append("Assess for sleep apnea and respiratory depression risk factors.")
     alerts.append("Avoid concurrent benzodiazepines, gabapentinoids, and other CNS depressants.")
