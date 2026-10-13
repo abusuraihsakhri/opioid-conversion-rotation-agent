@@ -3,6 +3,7 @@ Distributed Component Hierarchy & Executive Coordinator for OpioidRotate Sentine
 Domain: Palliative Medicine
 """
 import uuid
+import math
 from typing import Dict, Any, List, Optional
 from .models import ClinicalCasePayload, AgentAlert, UrgencyLevel, ClinicalIntegrityStatus
 from .engine import ClinicalDomainEngine
@@ -68,6 +69,10 @@ class OpioidRotateCoordinator:
         self.case_registry: Dict[str, Dict[str, Any]] = {}
 
     def process_case(self, case: ClinicalCasePayload) -> Dict[str, Any]:
+        if not all(isinstance(value, (int, float)) and not isinstance(value, bool)
+                   and math.isfinite(value)
+                   for value in (case.primary_metric, case.secondary_metric)):
+            raise ValueError("Primary and secondary metrics must be finite numbers")
         all_alerts: List[AgentAlert] = []
         all_alerts.extend(self.agent_1.audit(case))
         all_alerts.extend(self.agent_2.audit(case))
