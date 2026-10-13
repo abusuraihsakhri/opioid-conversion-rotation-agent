@@ -42,3 +42,20 @@ def test_csv_boolean_parsing(raw, expected):
 def test_csv_boolean_unknown_value_rejected():
     with pytest.raises(ValueError):
         parse_csv_boolean("maybe")
+
+
+def test_numeric_audits_reject_non_finite_metrics():
+    from opioid_conversion_rotation_agent.models import ClinicalCasePayload
+    from opioid_conversion_rotation_agent.agents import OpioidRotateCoordinator
+    from agents.models import SystemTaskPayload
+    from pydantic import ValidationError
+
+    case = ClinicalCasePayload(
+        case_id="DEMO-1", patient_synthetic_id="SYN-1",
+        primary_metric=float("nan"), secondary_metric=0.0, status_flag="NORMAL"
+    )
+    with pytest.raises(ValueError, match="finite"):
+        OpioidRotateCoordinator().process_case(case)
+    with pytest.raises(ValidationError):
+        SystemTaskPayload(task_id="DEMO-1", target_identifier="SYN-1",
+                          primary_metric=float("inf"))
