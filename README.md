@@ -1,173 +1,67 @@
 # Opioid Conversion Rotation Agent
 
-> **Domain:** Clinical Pharmacology & Precision Pharmacotherapy  
-> **Reference Guidelines & Standards:** `CPIC Guidelines & FDA Table of Pharmacogenomic Biomarkers`
+Educational opioid exposure calculations, legacy rotation examples, and research-oriented Python audit workflows. **Not validated as a clinical decision-support system.**
 
-<div align="center">
+## Browser application
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+The static MME reference interface is at [`web/index.html`](web/index.html), with a root [`index.html`](index.html) entry point for static hosting. Open `web/index.html` in a browser or serve the directory locally. No JavaScript framework, Python runtime, internet access, or API is required for the calculator itself.
 
-</div>
+Features:
+- Estimated total daily oral morphine milligram equivalents (MME) for morphine, oxycodone, hydromorphone, hydrocodone, codeine, and tramadol.
+- Transdermal fentanyl exposure estimates using **mcg/hour**, not mg/day.
+- Add/remove multiple regimens, review individual MME contributions, and reset the total.
+- Explicitly excludes methadone and injectable opioids from the browser calculator.
 
----
+**Clinical limitation:** MME factors are estimates for exposure comparison and risk assessment, **not equianalgesic conversion ratios**. Do not derive a new opioid prescription, cross-tolerance reduction, methadone initiation dose, transdermal fentanyl patch strength, or taper plan from an MME total. In particular, the CDC 2022 guideline excludes pain management related to sickle cell disease, cancer-related pain treatment, palliative care, and end-of-life care from its recommendations.
 
-## 📖 What It Does
+**Source:** [CDC Clinical Practice Guideline for Prescribing Opioids for Pain (2022)](https://www.cdc.gov/mmwr/volumes/71/rr/rr7103a1.htm), Table of MME factors and its cautions.
 
-**Opioid Conversion Rotation Agent** is an advanced analytical and computational platform implementing Equianalgesic Rotation & Cross-Tolerance Safety Reducer.
+## Python tools
 
----
+The repository contains multiple independent, partially overlapping interfaces:
 
-## ⚙️ Key Capabilities & Algorithmic Modules
+- `opioid_rotate.py` is the legacy research CLI and library, including `calculate_mme()`, `convert_opioid()`, `convert_to_methadone()`, `convert_to_fentanyl_patch()`, and `generate_taper_schedule()`. Conversion and taper outputs are illustrative and **are not prescribing instructions**; non-linear/complex drugs must be handled with specialist guidance. Generic `convert_opioid()` rejects methadone and fentanyl.
+- `opioid_conversion_rotation_agent/` implements a separate generic numeric-threshold audit, batch CLI, and optional FastAPI service. Its `primary_metric` and `secondary_metric` are **not** opioid-equivalent doses.
+- `agents/` contains an additional research audit/supervisor implementation with a keyed, in-memory HMAC audit chain. Its mock LLM adapter does not perform real model inference.
 
-### 🔬 Analytical Functions
+Install from a local checkout with Python 3.10+:
 
-- **`calculate_mme()`**: Calculate total daily Morphine Milligram Equivalents (MME).
-
-Args:
-    opioid_doses: List of dicts with keys:
-        - opioid: str (e.g., "morphine_po", "oxycodone_po")
-        - dose_mg: float (dose per administration)
-        - doses_per_day: int (number of administrations per day)
-        OR
-        - dose_mcg_per_hr: float (for fentanyl patch)
-    
-Returns:
-    Dictionary with MME calculation
-- **`convert_opioid()`**: Convert from one opioid to another with equianalgesic dosing.
-
-Args:
-    source_opioid: Source opioid name (e.g., "morphine_po")
-    source_dose_mg: Source dose per administration in mg
-    source_doses_per_day: Number of source doses per day
-    target_opioid: Target opioid name
-    cross_tolerance_reduction: Reduction for incomplete cross-tolerance (0.25-0.50)
-    doses_per_day_target: Target number of doses per day
-    
-Returns:
-    Dictionary with conversion details
-- **`convert_to_methadone()`**: Convert total daily MME to methadone dose.
-
-Methadone conversion is complex and non-linear.
-The ratio increases with higher MME doses.
-
-Args:
-    total_daily_mme: Total daily morphine milligram equivalents
-    cross_tolerance_reduction: Cross-tolerance reduction (default 50% for methadone)
-    
-Returns:
-    Dictionary with methadone conversion
-- **`generate_taper_schedule()`**: Generate a gradual opioid tapering schedule.
-
-CDC recommends:
-- Reduce by 10% per month for patients on opioids >1 year
-- Reduce by 10% per week for patients on opioids <1 year
-- Slower tapers (5-10% monthly) for patients on high doses
-
-Args:
-    current_daily_mme: Current total daily MME
-    target_daily_mme: Target daily MME (0 for complete taper)
-    reduction_percent: Percentage to reduce at each step
-    interval_days: Days between reductions
-    min_step_mme: Minimum reduction per step in MME
-    
-Returns:
-    Dictionary with tapering schedule
-- **`convert_to_fentanyl_patch()`**: Convert total daily MME to fentanyl transdermal patch dose.
-
-Approximate: 1 mcg/hr fentanyl patch ≈ 2.4 MME/day
-(varies by source, 2.0-3.0 range)
-
-Args:
-    total_daily_mme: Total daily morphine milligram equivalents
-    cross_tolerance_reduction: Cross-tolerance reduction
-    
-Returns:
-    Dictionary with fentanyl patch conversion
-
----
-
-## 📐 Mathematical Formulation & Logic
-
-```text
-  Calculate total daily Morphine Milligram Equivalents (MME).
-  risk = "VERY_HIGH"
-  risk = "HIGH"
-  risk = "MODERATE"
-  risk = "LOW"
+```sh
+python -m pip install -e ".[test,api]"
+python -m pytest -q
+node --check web/app.js
+node --test tests/web-mme.test.cjs
 ```
 
----
+Run the research CLI:
 
-## 💻 CLI Quickstart & Usage
-
-### 1. Guided Interactive Mode
-```bash
-python cli.py
+```sh
+python opioid_rotate.py mme --opioid oxycodone_po --dose 10 --times 3
+python opioid_rotate.py list
+python cli.py audit --case-id SAMPLE-001
+python cli.py serve --host 127.0.0.1 --port 8000
 ```
 
-### 2. Direct Parameterized Evaluation
-```bash
-python cli.py --input data.csv
+The optional API exposes `GET /health`, `POST /api/audit`, and `POST /api/chat` for the **generic numeric audit**. It is not the browser calculator's backend. Do not expose this API directly to the public internet without authentication, request-size limits, appropriate network controls, and a clinical/privacy review.
+
+## Docker
+
+```sh
+export AUDIT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+docker compose up --build
 ```
 
-### Parameter Reference
-- `--interactive`: Launch guided terminal interactive wizard.
-- `--input <path>`: Evaluate input from JSON or CSV specification.
-- `--json`: Output deterministic structured results in JSON format.
+The key is supplied externally; do not commit production secrets. The compose example binds port 8000 on the host, so restrict network exposure in any deployment.
 
-### Input Data Schema
+## Privacy and safety
 
-| Field | Description | Requirement |
-|:------|:------------|:------------|
-| `case_id` | Parameter / observation metric | Required |
-| `patient_synthetic_id` | Parameter / observation metric | Required |
-| `metric_primary` | Parameter / observation metric | Required |
-| `metric_secondary` | Parameter / observation metric | Required |
-| `is_stat` | Parameter / observation metric | Required |
-| `status_flag` | Parameter / observation metric | Required |
+The browser MME calculator does not request patient identifiers, make network API calls, or write to persistent browser storage. Entered regimens remain in the current page's memory and disappear when it is closed or refreshed. The Python APIs and CLI can accept free text and identifiers and have **not** been independently verified for PHI de-identification or clinical suitability; use synthetic or appropriately de-identified inputs only. The HMAC audit trail is process-local, not persistent or externally anchored.
 
----
+Clinical use requires professional review, validated institution-specific protocols, correct formulation/route, drug labeling, and appropriate safeguards. No result here should be interpreted as individual risk classification or a prescription.
 
-## 🛡️ Security & Enterprise Architecture
+## Technology, compatibility and license
 
-* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
-* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
-* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
-* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
-
----
-
-## 🧪 Testing & Verification
-
-Run the automated test suite:
-
-```bash
-pytest -v
-```
-
-Execute high-throughput batch simulation benchmarks:
-
-```bash
-python simulator.py 1000
-```
-
-### Environment Variables
-
-| Variable | Required | Description |
-|:---------|:---------|:------------|
-| `AUDIT_SECRET_KEY` | Yes (for audit features) | Secret key for HMAC-SHA256 audit trail. Must be at least 16 characters. Generate with: `python -c "import secrets; print(secrets.token_hex(32))"` |
-
----
-
-## 🐳 Container Deployment
-
-```bash
-docker build -t opioid-conversion-rotation-agent .
-docker run -p 8000:8000 opioid-conversion-rotation-agent
-```
+- Python 3.10–3.12 (test matrix), standard library, Pydantic 2; FastAPI/Uvicorn optional.
+- Browser: modern JavaScript-capable Chrome, Firefox, Safari, or Edge. The static calculator works without a backend; automated tests use Node.js 22.
+- CI: Python tests, browser calculation tests, syntax checks, and dependency consistency.
+- License: [MIT](LICENSE).
