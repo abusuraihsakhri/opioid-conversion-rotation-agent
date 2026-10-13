@@ -1,236 +1,81 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Opioid Conversion Rotation Engine — Operations Console</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #090d16;
-            --card: #111827;
-            --border: #1f293d;
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.25);
-            --text: #f3f4f6;
-            --text-muted: #9ca3af;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding: 2rem;
-            min-height: 100vh;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        .header-title h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-        .header-title p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
-        .badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            background: var(--accent-glow);
-            color: var(--accent);
-            border: 1px solid var(--accent);
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: 1.5rem;
-        }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .card h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-        input, select, textarea {
-            width: 100%;
-            padding: 0.65rem 0.9rem;
-            background: #0d1322;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: #fff;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
-        input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-        .btn {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 0.7rem 1.4rem;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-            width: 100%;
-        }
-        .btn:hover { background: #2563eb; }
-        .terminal {
-            background: #060911;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: #10b981;
-            height: 380px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-        .metrics-bar {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .metric-box {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-        }
-        .metric-val { font-size: 1.4rem; font-weight: 700; color: #fff; margin-top: 0.25rem; }
-        .metric-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Opioid MME Reference Calculator</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;background:#0b1220;color:#e6edf7}
+*{box-sizing:border-box}body{margin:0;padding:1.5rem}main{max-width:890px;margin:0 auto}
+h1{font-size:clamp(1.5rem,3vw,2.2rem);margin:0 0 .5rem}h2{font-size:1.15rem;margin:0 0 1rem}
+p{line-height:1.55;color:#becadd}.eyebrow{color:#83b9ff;font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.panel{margin:1.25rem 0;border:1px solid #36455e;background:#131e30;border-radius:13px;padding:1.25rem}
+.notice{border-left:4px solid #f6c66e;padding:.15rem 1rem;background:#242032;border-radius:4px}
+.notice p{margin:.65rem 0}.grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto;gap:.85rem;align-items:end}
+label{display:block;margin-bottom:.4rem;font-weight:600;font-size:.9rem}
+input,select,button{font:inherit;border-radius:7px;padding:.7rem .85rem}
+input,select{width:100%;background:#091423;border:1px solid #7c8da6;color:#fff}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+button{cursor:pointer;border:1px solid #7caeff;background:#2563b8;color:white;font-weight:700}
+button:hover{background:#1d4f92}.secondary{background:transparent;border-color:#8298b6;color:#d7e5fa}
+.secondary:hover{background:#26354a}.result{font-size:2rem;font-weight:750;font-variant-numeric:tabular-nums;margin:.3rem 0}
+.small{font-size:.86rem}.error{color:#ffb1b1;min-height:1.2rem;margin:.6rem 0}
+table{width:100%;border-collapse:collapse}th,td{padding:.65rem .4rem;text-align:left;border-bottom:1px solid #35435b}
+th{color:#c9d6e8;font-size:.88rem}td:last-child,th:last-child{text-align:right}
+td button{font-size:.83rem;padding:.38rem .65rem}.table-wrap{overflow-x:auto}
+a{color:#93c5fd}footer{margin:1.5rem 0 0;font-size:.84rem;color:#abb9ce}
+@media(max-width:650px){body{padding:1rem}.grid{grid-template-columns:1fr}.panel{padding:1rem}th,td{font-size:.86rem}}
+</style>
+<script src="./app.js" defer></script>
 </head>
 <body>
-
-    <div class="header">
-        <div class="header-title">
-            <h1>Opioid Conversion Rotation Engine</h1>
-            <p>Domain: Clinical & Cryptographic AI | Standard: CAP / CLSI / NIST Standards | LabMind-Atlas Architecture</p>
-        </div>
-        <div>
-            <span class="badge">Air-Gapped Active</span>
-            <span class="badge" style="background: rgba(16,185,129,0.2); color: #10b981; border-color: #10b981;">Zero-PHI Guard Active</span>
-        </div>
-    </div>
-
-    <div class="metrics-bar">
-        <div class="metric-box">
-            <div class="metric-label">System Status</div>
-            <div class="metric-val" style="color: var(--success);" id="m-status">OPTIMAL</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Tasks Processed</div>
-            <div class="metric-val" id="m-tasks">142</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Audit Blocks Signed</div>
-            <div class="metric-val" id="m-audit">142</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">PHI Interceptions</div>
-            <div class="metric-val" style="color: var(--accent);" id="m-phi">0</div>
-        </div>
-    </div>
-
-    <div class="grid">
-        <div class="card">
-            <h2>⚙️ Dispatch Distributed Component Audit</h2>
-            <div class="form-group">
-                <label>Task / Sample ID</label>
-                <input type="text" id="task_id" value="TASK-2026-LIVE-01">
-            </div>
-            <div class="form-group">
-                <label>Target Identifier</label>
-                <input type="text" id="target_id" value="SPECIMEN-ALPHA-77">
-            </div>
-            <div class="form-group">
-                <label>Primary Measurement / Value</label>
-                <input type="number" id="primary_metric" value="29.4" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Secondary Metric / Kinetic Index</label>
-                <input type="number" id="secondary_metric" value="14.8" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Status / Phenotype Descriptor</label>
-                <input type="text" id="status_descriptor" value="DISCORDANT_ANOMALY">
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="is_critical" checked> Trigger Emergency / Critical Flag</label>
-            </div>
-            <button class="btn" onclick="runAudit()">Execute Distributed Component Audit</button>
-        </div>
-
-        <div class="card">
-            <h2>📊 Real-Time Consensus Dossier & Audit Log</h2>
-            <div class="terminal" id="outputConsole">// Opioid Conversion Rotation Engine Operations Console Ready
-// Connection established with Air-Gapped Supervisor
-// Cryptographic HMAC-SHA256 audit ledger loaded.
-// Ready for live task payload dispatch...</div>
-        </div>
-    </div>
-
-    <script>
-        async function runAudit() {
-            const consoleEl = document.getElementById('outputConsole');
-            consoleEl.innerText = "// Dispatching task across specialized workers...
-// Invoking InvariantQCWorker, SafetyEscalationWorker, ProtocolWorker...";
-
-            const payload = {
-                task_id: document.getElementById('task_id').value,
-                target_identifier: document.getElementById('target_id').value,
-                primary_metric: parseFloat(document.getElementById('primary_metric').value),
-                secondary_metric: parseFloat(document.getElementById('secondary_metric').value),
-                status_descriptor: document.getElementById('status_descriptor').value,
-                is_critical_flag: document.getElementById('is_critical').checked
-            };
-
-            try {
-                const res = await fetch('/api/audit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                consoleEl.innerText = JSON.stringify(data, null, 2);
-                document.getElementById('m-tasks').innerText = parseInt(document.getElementById('m-tasks').innerText) + 1;
-                document.getElementById('m-audit').innerText = parseInt(document.getElementById('m-audit').innerText) + 1;
-            } catch (err) {
-                consoleEl.innerText = "// Offline / Simulation Output:\n" + JSON.stringify({
-                    dossier_id: "DOSSIER-SIM-" + Math.floor(Math.random()*10000),
-                    system: "opioid-conversion-rotation-engine",
-                    domain: "Clinical & Cryptographic AI",
-                    task_id: payload.task_id,
-                    overall_urgency: payload.is_critical_flag ? "CRITICAL_STAT_PANIC" : "ELEVATED_RISK",
-                    integrity_status: "DISCORDANT_ANOMALY",
-                    alerts: [
-                        { worker: "InvariantQCWorker", alert: "Primary metric exceeds upper reference bound" },
-                        { worker: "SafetyEscalationWorker", alert: "Critical emergency interlock flag active" }
-                    ],
-                    audit_hash: "HMAC_SHA256_e83f9a72b941d6c381f9"
-                }, null, 2);
-            }
-        }
-    </script>
+<main>
+<header>
+<p class="eyebrow">Palliative and pain medicine · Research reference</p>
+<h1>Opioid morphine milligram equivalent (MME) calculator</h1>
+<p>A local, browser-only reference calculator using the CDC 2022 MME factors for selected outpatient opioid formulations.</p>
+</header>
+<section class="notice" role="note" aria-label="Clinical safety limitations">
+<p><strong>Not a prescribing or opioid-rotation tool.</strong> MME is an estimate for population-level risk assessment; it is not an equianalgesic replacement dose. Do not use calculated MMEs to switch opioids, determine methadone doses, select fentanyl patches, or direct tapering.</p>
+<p class="small">Requires clinical review of indication, opioid tolerance, formulation, concurrent drugs, age, organ function, and individual response. The CDC chronic-pain guideline is not intended as a protocol for cancer-related pain, palliative care, or end-of-life care.</p>
+</section>
+<section class="panel">
+<h2>Add an existing opioid regimen</h2>
+<form id="dose-form" novalidate>
+<div class="grid">
+<div><label for="drug">Opioid and route</label><select id="drug" required>
+<option value="morphine_po">Morphine · oral</option>
+<option value="oxycodone_po">Oxycodone · oral</option>
+<option value="hydromorphone_po">Hydromorphone · oral</option>
+<option value="hydrocodone_po">Hydrocodone · oral</option>
+<option value="codeine_po">Codeine · oral</option>
+<option value="tramadol_po">Tramadol · oral</option>
+<option value="fentanyl_patch">Fentanyl · transdermal patch</option>
+</select></div>
+<div><label id="dose-label" for="daily-dose">Total daily dose (mg/day)</label><input id="daily-dose" type="number" min="0" step="any" inputmode="decimal" required placeholder="e.g., 30"></div>
+<button type="submit">Add regimen</button>
+</div>
+<p class="error" id="error" role="alert" aria-live="polite"></p>
+</form>
+<p class="small">Enter the full 24-hour dose, not the amount per administration. For fentanyl patches, enter the prescribed delivery rate in mcg/hour (not the total patch drug content).</p>
+</section>
+<section class="panel" aria-labelledby="result-heading">
+<h2 id="result-heading">Total daily exposure</h2>
+<div class="result"><span id="total-mme" aria-live="polite">0</span> <span class="small">MME/day</span></div>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Regimen</th><th scope="col">Daily dose / rate</th><th scope="col">Factor</th><th scope="col">MME/day</th><th scope="col">Action</th></tr></thead>
+<tbody id="regimen-rows"><tr><td colspan="5">No regimen entered.</td></tr></tbody>
+</table></div>
+<div style="margin-top:1rem"><button id="clear" class="secondary" type="button">Clear all</button></div>
+</section>
+<section class="panel">
+<h2>Method and limitations</h2>
+<p>For oral products: <strong>daily dose (mg/day) × CDC factor</strong>. For transdermal fentanyl: <strong>delivery rate (mcg/hour) × 2.4</strong>. Methadone, injectable formulations, and other complex conversions are deliberately excluded from this reference interface.</p>
+<p>The result is an estimate, not a dose recommendation, risk category, or prescription. No identifying information is requested; entries remain in this page's volatile memory and are not transmitted to an application server.</p>
+<p class="small">Source: <a href="https://www.cdc.gov/mmwr/volumes/71/rr/rr7103a1.htm" target="_blank" rel="noopener noreferrer">CDC Clinical Practice Guideline for Prescribing Opioids for Pain (2022), MME conversion table and cautions</a>.</p>
+</section>
+<footer>Educational and research use only. No automatic clinical decision-making.</footer>
+</main>
 </body>
 </html>
